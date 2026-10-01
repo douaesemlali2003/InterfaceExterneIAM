@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppX — base cible (demo)</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #171d2c;
+    --border: #2a3348;
+    --text: #e7ebf3;
+    --muted: #8892a8;
+    --accent: #5b8cff;
+    --ok: #38c793;
+    --off: #566079;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 0.85rem; }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  thead th {
+    text-align: left;
+    padding: 12px 16px;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.new-row { animation: flash 1.8s ease-out; }
+  @keyframes flash {
+    0% { background: rgba(91,140,255,0.35); }
+    100% { background: transparent; }
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .badge.on { background: rgba(56,199,147,0.15); color: var(--ok); }
+  .badge.off { background: rgba(86,96,121,0.25); color: var(--off); }
+  .role {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px 4px 2px 0;
+    border-radius: 6px;
+    background: rgba(91,140,255,0.12);
+    color: var(--accent);
+    font-size: 0.75rem;
+  }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  footer { margin-top: 16px; color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>App<span>X</span> — base cible</h1>
+      <div class="sub">Simule l'application legacy provisionnée via ProvisioningGateway.Api</div>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">connexion...</span></div>
+  </header>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr><th>UID</th><th>Login</th><th>Email</th><th>Statut</th><th>Rôles</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">Aucun compte pour le moment.</div>
+  </div>
+
+  <footer id="footer">—</footer>
+
+<script>
+let knownUids = new Set();
+let firstLoad = true;
+
+async function refresh() {
+  try {
+    const res = await fetch('/appx/comptes');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const comptes = await res.json();
+
+    document.getElementById('dot').style.background = '#38c793';
+    document.getElementById('statusText').textContent = 'connecté — actualisation auto (2s)';
+
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('empty');
+    rowsEl.innerHTML = '';
+    emptyEl.style.display = comptes.length ? 'none' : 'block';
+
+    for (const c of comptes) {
+      const tr = document.createElement('tr');
+      if (!firstLoad && !knownUids.has(c.uid)) tr.className = 'new-row';
+      tr.innerHTML = `
+        <td>#${c.uid}</td>
+        <td>${c.login}</td>
+        <td>${c.email ?? ''}</td>
+        <td><span class="badge ${c.actif ? 'on' : 'off'}">${c.actif ? 'actif' : 'inactif'}</span></td>
+        <td>${(c.roles || []).map(r => `<span class="role">${r}</span>`).join('') || '—'}</td>
+      `;
+      rowsEl.appendChild(tr);
+    }
+
+    knownUids = new Set(comptes.map(c => c.uid));
+    firstLoad = false;
+    document.getElementById('footer').textContent =
+      `${comptes.length} compte(s) — dernière actualisation ${new Date().toLocaleTimeString('fr-FR')}`;
+  } catch (e) {
+    document.getElementById('dot').style.background = '#e5484d';
+    document.getElementById('statusText').textContent = 'Gateway injoignable';
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

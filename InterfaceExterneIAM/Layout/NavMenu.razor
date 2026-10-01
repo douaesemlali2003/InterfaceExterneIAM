@@ -1,0 +1,56 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M12 1.5 4 4.5v6.2c0 4.6 3.2 8.9 8 11.8 4.8-2.9 8-7.2 8-11.8V4.5l-8-3Zm0 5.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Zm0 11.4c-1.9 0-3.6-.9-4.6-2.3.1-1.5 3.1-2.3 4.6-2.3 1.5 0 4.5.8 4.6 2.3a5.6 5.6 0 0 1-4.6 2.3Z" />
+                </svg>
+            </span>
+            Portail IAM
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="catalogue">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Catalogue
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="mes-demandes">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Mes demandes
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="mes-acces">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Mes accès
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="demande/nouvelle">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Nouvelle demande
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

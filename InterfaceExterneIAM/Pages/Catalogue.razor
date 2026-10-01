@@ -1,0 +1,76 @@
+@page "/catalogue"
+@inject MidpointService MidpointService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Catalogue</PageTitle>
+
+<h1>Catalogue des accès</h1>
+<p>Rôles disponibles pour votre organisation.</p>
+
+@if (isLoading)
+{
+    <p><em>Chargement...</em></p>
+}
+else if (hasError)
+{
+    <div class="alert alert-danger">
+        Le catalogue est temporairement indisponible, veuillez réessayer plus tard.
+    </div>
+}
+else if (Roles.Count == 0)
+{
+    <p>Aucun rôle disponible pour le moment.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+        @foreach (var role in Roles)
+        {
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@role.Name</h5>
+                        <p class="card-text flex-grow-1">@(role.Description ?? "Aucune description.")</p>
+                        <button class="btn btn-primary" @onclick="() => DemanderAcces(role)">Demander l'accès</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<RoleDto> Roles = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+            Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/login?returnUrl={returnUrl}", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            Roles = await MidpointService.GetCatalogueAsync();
+        }
+        catch (Exception)
+        {
+            hasError = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void DemanderAcces(RoleDto role)
+    {
+        Navigation.NavigateTo($"/demande/nouvelle?roleOid={Uri.EscapeDataString(role.Oid)}");
+    }
+}

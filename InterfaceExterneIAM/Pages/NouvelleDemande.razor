@@ -1,0 +1,171 @@
+@page "/demande/nouvelle"
+@inject MidpointService MidpointService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Nouvelle demande</PageTitle>
+
+<h1>Nouvelle demande d'accès</h1>
+<p class="text-muted">Choisissez l'accès souhaité et justifiez votre besoin. Votre manager recevra la demande pour approbation.</p>
+
+@if (isLoading)
+{
+    <p><em>Chargement...</em></p>
+}
+else if (loadError)
+{
+    <div class="alert alert-danger">
+        Le catalogue est temporairement indisponible, veuillez réessayer plus tard.
+    </div>
+}
+else if (Confirmation)
+{
+    <div class="card confirmation">
+        <div class="card-body text-center">
+            <span class="confirmation-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="m8 12 3 3 5-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </span>
+            <h2 class="h5 mt-3 mb-2">Votre demande a bien été soumise</h2>
+            <p class="text-muted mb-4">
+                Elle est maintenant en attente d'approbation par votre manager.
+            </p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a class="btn btn-primary" href="/mes-demandes">Suivre mes demandes</a>
+                <a class="btn btn-outline-primary" href="/catalogue">Retour au catalogue</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-body">
+
+                    @if (submitError)
+                    {
+                        <div class="alert alert-danger">@submitErrorMessage</div>
+                    }
+
+                    <EditForm Model="@Model" OnValidSubmit="Soumettre">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-4">
+                            <label class="form-label" for="champ-role">
+                                Accès demandé <span class="obligatoire">*</span>
+                            </label>
+                            <select id="champ-role" class="form-select" @bind="Model.RoleOid">
+                                <option value="">-- Sélectionnez un accès --</option>
+                                @foreach (var role in Roles)
+                                {
+                                    <option value="@role.Oid">@role.Name</option>
+                                }
+                            </select>
+                            <p class="aide">Seuls les accès de votre catalogue sont proposés.</p>
+                            @if (RoleSelectionne?.Description is { Length: > 0 } description)
+                            {
+                                <div class="apercu-role">@description</div>
+                            }
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" for="champ-justification">
+                                Justification <span class="obligatoire">*</span>
+                            </label>
+                            <textarea id="champ-justification" class="form-control" rows="4"
+                                      placeholder="Expliquez pourquoi vous avez besoin de cet accès"
+                                      @bind="Model.Justification"></textarea>
+                            <p class="aide">Cette justification sera lue par votre manager au moment de l'approbation.</p>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" disabled="@(!PeutSoumettre || isSubmitting)">
+                                @(isSubmitting ? "Envoi en cours..." : "Soumettre la demande")
+                            </button>
+                            <a class="btn btn-outline-primary" href="/catalogue">Annuler</a>
+                        </div>
+                    </EditForm>
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DemandeFormModel Model = new();
+    private List<RoleDto> Roles = new();
+    private bool isLoading = true;
+    private bool loadError = false;
+    private bool isSubmitting = false;
+    private bool submitError = false;
+    private string submitErrorMessage = string.Empty;
+    private bool Confirmation = false;
+
+    [SupplyParameterFromQuery(Name = "roleOid")]
+    private string? RoleOidFromQuery { get; set; }
+
+    private bool PeutSoumettre => !string.IsNullOrEmpty(Model.RoleOid)
+        && !string.IsNullOrWhiteSpace(Model.Justification);
+
+    private RoleDto? RoleSelectionne =>
+        Roles.FirstOrDefault(r => r.Oid == Model.RoleOid);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+            Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/login?returnUrl={returnUrl}", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            Roles = await MidpointService.GetCatalogueAsync();
+            if (!string.IsNullOrEmpty(RoleOidFromQuery))
+            {
+                Model.RoleOid = RoleOidFromQuery;
+            }
+        }
+        catch (Exception)
+        {
+            loadError = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Soumettre()
+    {
+        isSubmitting = true;
+        submitError = false;
+        try
+        {
+            await MidpointService.SoumettreDemandeAsync(Model.RoleOid, Model.Justification);
+            Confirmation = true;
+        }
+        catch (Exception ex)
+        {
+            submitError = true;
+            submitErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private class DemandeFormModel
+    {
+        public string RoleOid { get; set; } = string.Empty;
+        public string Justification { get; set; } = string.Empty;
+    }
+}

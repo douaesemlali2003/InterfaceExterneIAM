@@ -1,0 +1,75 @@
+@page "/mes-acces"
+@inject MidpointService MidpointService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Mes accès</PageTitle>
+
+<h1>Mes accès</h1>
+<p class="text-muted">Les accès qui vous ont été accordés.</p>
+
+@if (isLoading)
+{
+    <p><em>Chargement...</em></p>
+}
+else if (hasError)
+{
+    <div class="alert alert-danger">
+        Vos accès sont temporairement indisponibles, veuillez réessayer plus tard.
+    </div>
+}
+else if (Acces.Count == 0)
+{
+    <p>Aucun accès ne vous a encore été accordé. Consultez le catalogue pour découvrir les accès disponibles.</p>
+    <a class="btn btn-primary" href="/catalogue">Consulter le catalogue</a>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Accès</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var acces in Acces)
+            {
+                <tr>
+                    <td>@acces.Name</td>
+                    <td><span class="badge bg-success">Actif</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<RoleDto> Acces = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+            Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/login?returnUrl={returnUrl}", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            Acces = await MidpointService.GetMesAccesAsync();
+        }
+        catch (Exception)
+        {
+            hasError = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

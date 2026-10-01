@@ -1,0 +1,46 @@
+.obligatoire {
+    color: #b42318;
+    font-weight: 600;
+}
+
+.aide {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+}
+
+.apercu-role {
+    margin-top: 0.65rem;
+    padding: 0.7rem 0.85rem;
+    border-left: 3px solid var(--accent);
+    background-color: var(--accent-soft);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--ink);
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--line);
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+}
+
+/* Ecran de confirmation */
+.confirmation {
+    max-width: 32rem;
+}
+
+.confirmation-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 50%;
+    background-color: #e8f6ee;
+    color: #1a7f4b;
+}

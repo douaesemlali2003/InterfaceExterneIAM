@@ -1,0 +1,209 @@
+﻿@page "/"
+@inject MidpointService MidpointService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Portail IAM</PageTitle>
+
+@if (!AuthState.IsAuthenticated)
+{
+    <h1>Portail IAM</h1>
+    <p>Bienvenue sur le portail de gestion des accès. Connectez-vous pour consulter vos accès et suivre vos demandes.</p>
+    <a class="btn btn-primary" href="@($"{BffConfig.BaseUrl}bff/login")">Se connecter</a>
+}
+else
+{
+    <h1>Bonjour @AuthState.Username</h1>
+    <p class="text-muted">Voici l'état de vos accès et de vos demandes.</p>
+
+    @if (isLoading)
+    {
+        <p><em>Chargement...</em></p>
+    }
+    else if (hasError)
+    {
+        <div class="alert alert-danger">
+            Vos informations sont temporairement indisponibles, veuillez réessayer plus tard.
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+
+            <div class="col">
+                <div class="card kpi h-100">
+                    <div class="card-body">
+                        <span class="kpi-icon kpi-icon-attente" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M12 7v5l3 2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                        <span class="kpi-value">@NbDemandesEnAttente</span>
+                        <span class="kpi-label">
+                            @(NbDemandesEnAttente > 1 ? "demandes en attente d'approbation" : "demande en attente d'approbation")
+                        </span>
+                        <a class="kpi-link" href="/mes-demandes">Voir mes demandes →</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card kpi h-100">
+                    <div class="card-body">
+                        <span class="kpi-icon kpi-icon-actif" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="m8 12 3 3 5-6" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <span class="kpi-value">@Acces.Count</span>
+                        <span class="kpi-label">
+                            @(Acces.Count > 1 ? "accès actifs" : "accès actif")
+                        </span>
+                        <a class="kpi-link" href="/mes-acces">Voir mes accès →</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card kpi h-100">
+                    <div class="card-body">
+                        <span class="kpi-icon kpi-icon-catalogue" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <span class="kpi-value">@Roles.Count</span>
+                        <span class="kpi-label">
+                            @(Roles.Count > 1 ? "accès disponibles dans le catalogue" : "accès disponible dans le catalogue")
+                        </span>
+                        <a class="kpi-link" href="/catalogue">Consulter le catalogue →</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="row g-3">
+
+            <div class="col-12 col-lg-7">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h2 class="h5 mb-1">Mes dernières demandes</h2>
+                                <p class="text-muted small mb-0">Suivez l'état de vos demandes récentes</p>
+                            </div>
+                            @if (Demandes.Count > 0)
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="/mes-demandes">Voir toutes</a>
+                            }
+                        </div>
+
+                        @if (Demandes.Count == 0)
+                        {
+                            <p class="text-muted mb-0">Vous n'avez pas encore fait de demande d'accès.</p>
+                        }
+                        else
+                        {
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Demande</th>
+                                        <th>Statut</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var demande in DemandesRecentes)
+                                    {
+                                        <tr>
+                                            <td>@demande.RoleName</td>
+                                            <td><span class="badge @StatutCssClass(demande.Statut)">@demande.Statut</span></td>
+                                            <td>@(demande.DateCreation?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5 mb-1">Faire une demande</h2>
+                        <p class="text-muted small">Demandez un nouvel accès en quelques étapes</p>
+
+                        <a class="btn btn-primary w-100 mb-3" href="/catalogue">Parcourir le catalogue</a>
+
+                        <a class="action-row" href="/demande/nouvelle">
+                            <span class="action-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                                </svg>
+                            </span>
+                            <span class="action-text">
+                                <span class="action-title">Nouvelle demande</span>
+                                <span class="action-desc">Choisir un accès et le justifier</span>
+                            </span>
+                            <span class="action-chevron" aria-hidden="true">›</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+}
+
+@code {
+    private const int NombreDemandesAffichees = 3;
+
+    private List<RoleDto> Roles = new();
+    private List<RoleDto> Acces = new();
+    private List<DemandeDto> Demandes = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+
+    private int NbDemandesEnAttente => Demandes.Count(d => d.Statut == "Soumise");
+
+    private IEnumerable<DemandeDto> DemandesRecentes =>
+        Demandes.OrderByDescending(d => d.DateCreation ?? DateTimeOffset.MinValue)
+                .Take(NombreDemandesAffichees);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            Roles = await MidpointService.GetCatalogueAsync();
+            Acces = await MidpointService.GetMesAccesAsync();
+            Demandes = await MidpointService.GetMesDemandesAsync();
+        }
+        catch (Exception)
+        {
+            hasError = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string StatutCssClass(string statut) => statut switch
+    {
+        "Validée" => "bg-success",
+        "Rejetée" => "bg-danger",
+        "Soumise" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}

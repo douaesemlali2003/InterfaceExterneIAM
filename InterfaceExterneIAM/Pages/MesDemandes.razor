@@ -1,0 +1,153 @@
+@page "/mes-demandes"
+@implements IAsyncDisposable
+@inject MidpointService MidpointService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Mes demandes</PageTitle>
+
+<h1>Mes demandes d'accès</h1>
+
+@if (isLoading)
+{
+    <p><em>Chargement...</em></p>
+}
+else if (hasError)
+{
+    <div class="alert alert-danger">
+        Impossible de récupérer vos demandes pour le moment, veuillez réessayer plus tard.
+    </div>
+}
+else if (Demandes.Count == 0)
+{
+    <p>Aucune demande pour le moment.</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(annulationErreur))
+    {
+        <div class="alert alert-danger">@annulationErreur</div>
+    }
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Rôle demandé</th>
+                <th>Statut</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var demande in Demandes)
+            {
+                <tr>
+                    <td>@(demande.DateCreation?.ToString("dd/MM/yyyy") ?? "-")</td>
+                    <td>@demande.RoleName</td>
+                    <td><span class="badge @StatutCssClass(demande.Statut)">@demande.Statut</span></td>
+                    <td>
+                        @if (demande.Statut == "Soumise")
+                        {
+                            <button class="btn btn-sm btn-outline-danger" disabled="@(annulationEnCours == demande.RoleOid)" @onclick="() => Annuler(demande)">Annuler</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<DemandeDto> Demandes = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string? annulationEnCours;
+    private string annulationErreur = string.Empty;
+    private PeriodicTimer? refreshTimer;
+    private CancellationTokenSource? refreshCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+            Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/login?returnUrl={returnUrl}", forceLoad: true);
+            return;
+        }
+
+        await ChargerDemandes();
+        isLoading = false;
+
+        DemarrerRafraichissementAuto();
+    }
+
+    private async Task ChargerDemandes()
+    {
+        try
+        {
+            Demandes = await MidpointService.GetMesDemandesAsync();
+            hasError = false;
+        }
+        catch (Exception)
+        {
+            hasError = true;
+        }
+    }
+
+    private void DemarrerRafraichissementAuto()
+    {
+        refreshCts = new CancellationTokenSource();
+        refreshTimer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (await refreshTimer.WaitForNextTickAsync(refreshCts.Token))
+                {
+                    await ChargerDemandes();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private async Task Annuler(DemandeDto demande)
+    {
+        annulationEnCours = demande.RoleOid;
+        annulationErreur = string.Empty;
+        try
+        {
+            await MidpointService.AnnulerDemandeAsync(demande.RoleOid);
+            await ChargerDemandes();
+        }
+        catch (Exception ex)
+        {
+            annulationErreur = ex.Message;
+        }
+        finally
+        {
+            annulationEnCours = null;
+        }
+    }
+
+    private string StatutCssClass(string statut) => statut switch
+    {
+        "Validée" => "bg-success",
+        "Rejetée" => "bg-danger",
+        "Soumise" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        refreshCts?.Cancel();
+        refreshTimer?.Dispose();
+        refreshCts?.Dispose();
+        await Task.CompletedTask;
+    }
+}

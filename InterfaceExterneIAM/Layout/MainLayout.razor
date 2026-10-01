@@ -1,0 +1,57 @@
+﻿@inherits LayoutComponentBase
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            @if (AuthState.IsAuthenticated)
+            {
+                <div class="user-box">
+                    <span class="avatar" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M12 13.5c-4.15 0-7.5 2.35-7.5 5.25V20a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5v-1.25c0-2.9-3.35-5.25-7.5-5.25Z" />
+                        </svg>
+                    </span>
+                    <span class="user-details">
+                        <span class="user-name">@AuthState.Username</span>
+                        <span class="user-role">Connecté</span>
+                    </span>
+                </div>
+                <button type="button" class="btn btn-logout" @onclick="Logout">Déconnexion</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary" @onclick="Login">Connexion</button>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.RefreshAsync();
+    }
+
+    private void Login()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/login?returnUrl={returnUrl}", forceLoad: true);
+    }
+
+    private void Logout()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.BaseUri);
+        Navigation.NavigateTo($"{BffConfig.BaseUrl}bff/logout?returnUrl={returnUrl}", forceLoad: true);
+    }
+}
